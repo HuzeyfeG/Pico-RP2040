@@ -12,6 +12,7 @@ MPU6050::MPU6050(i2c_inst_t *i2c_instance, uint16_t scl, uint16_t sda) {
 
 
 void MPU6050::init() {
+    //  Set frequency and pins.
     i2c_init(i2c, 400 * 1000);
     gpio_set_function(scl_pin, GPIO_FUNC_I2C);
     gpio_set_function(sda_pin, GPIO_FUNC_I2C);
@@ -19,38 +20,67 @@ void MPU6050::init() {
     gpio_pull_up(sda_pin);
 
     uint8_t data[2];
-    // Power management register 1
+    //  Power management.
     data[0] = 0x6B;
     data[1] = 0x00;
     i2c_write_blocking(i2c, addr, data, 2, true);
 
-    // Set accelerometer configuration (optional)
+    //  Configuration settings (low_pass_filter).
+    data[0] = 0x1A;
+    data[1] = 0x05; // Bandwith 10Hz 
+    i2c_write_blocking(i2c, addr, data, 2, true); 
+
+    //  Set the gyro configuration.
+    data[0] = 0x1B;
+    data[1] = 0x08; // ±500 degrees/second
+    i2c_write_blocking(i2c, addr, data, 2, true); 
+
+    //  Set the acc configuration.
     data[0] = 0x1C;
     data[1] = 0x00; // ±2g (default)
     i2c_write_blocking(i2c, addr, data, 2, true);
+}
 
-    // Set gyroscope configuration (optional)
-    data[0] = 0x1B;
-    data[1] = 0x00; // ±250 degrees/second (default)
-    i2c_write_blocking(i2c, addr, data, 2, true);    
+void MPU6050::set_gyro_calibration() {
+    for(int i = 0; i < 2000; i++) {
+        gcd = get_gyro();
+        rate_calibration_x += gcd.gx;
+        rate_calibration_y += gcd.gy;
+        rate_calibration_z += gcd.gz;
+        sleep_ms(1);
+    }
+
+    rate_calibration_x /= 2000;
+    rate_calibration_y /= 2000;
+    rate_calibration_z /= 2000;
+}
+
+GyroData MPU6050::get_gyro() {
+    //  Write and read the register.
+    i2c_write_blocking(i2c, addr, &gyro_reg, 1, true);
+    i2c_read_blocking(i2c, addr, gyro_bits, 6, false);
+
+    gyro_x = ((gyro_bits[0]<<8) | gyro_bits[1]);
+    gyro_y = ((gyro_bits[2]<<8) | gyro_bits[3]);
+    gyro_z = ((gyro_bits[4]<<8) | gyro_bits[5]);
+
+    gd.gx = (float)gyro_x / 65.5;
+    gd.gy = (float)gyro_y / 65.5;
+    gd.gz = (float)gyro_z / 65.5;
+    return gd;
 }
 
 AccData MPU6050::get_acc() {
-    uint8_t accel[6]; // Store data from the 6 acceleration registers
-    int16_t accelX, accelY, accelZ; // Combined 3 axis data
-    float f_accelX, f_accelY, f_accelZ; // Float type of acceleration data
-    uint8_t val = 0x3B; // Start register address
+    //  Write and read the register.
+    i2c_write_blocking(i2c, addr, &acc_reg, 1, true);
+    i2c_read_blocking(i2c, addr, acc_bits, 6, false);
 
-    i2c_write_blocking(i2c, addr, &val, 1, true);
-    i2c_read_blocking(i2c, addr, accel, 6, false);
+    acc_x = ((acc_bits[0]<<8) | acc_bits[1]);
+    acc_y = ((acc_bits[2]<<8) | acc_bits[3]);
+    acc_z = ((acc_bits[4]<<8) | acc_bits[5]);
 
-    accelX = ((accel[0]<<8) | accel[1]);
-    accelY = ((accel[2]<<8) | accel[3]);
-    accelZ = ((accel[4]<<8) | accel[5]);
-
-    AccData rd;
-    rd.ax = accelX / 16384.0;
-    rd.ay = accelY / 16384.0;
-    rd.az = accelZ / 16384.0;
-    return rd;
+    ad.ax = (float)acc_x / 16384;
+    ad.ay = (float)acc_y / 16384;
+    ad.az = (float)acc_z / 16384;
+    return ad;
 }
