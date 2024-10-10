@@ -1,18 +1,20 @@
 #include <stdio.h>
 #include "BLDC.h"
 
-
+//	Define BLDC pin.
 #define BLDC_PIN 4
 
 
 int main(){
 	stdio_init_all();
 
+	//	Set the pin number and duty interval.
 	BLDC bldc(BLDC_PIN, 890, 1600);
     bldc.set_power(0.0);
     sleep_ms(5000);
 
 	while (true){
+		//	Let the party begin!
 		bldc.set_power(10.0);
    		sleep_ms(2000);
 		bldc.set_power(20.0);
