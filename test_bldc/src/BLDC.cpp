@@ -14,18 +14,13 @@ BLDC::BLDC(uint8_t gp, uint16_t min_duty, uint16_t max_duty) {
 	pwm_set_gpio_level(gp, 0);
 	
 	//	Get the slice number of the pin.
-	uint slice_num = pwm_gpio_to_slice_num(gp);
+	this->slice_num = pwm_gpio_to_slice_num(gp);
 
-	//	Set the frequency to 50Hz.
-	uint32_t clk = clock_get_hz(clk_sys);
-	uint32_t div = clk / (20000 * 50);
-	pwm_set_clkdiv(slice_num, div);
+	//	Set the frequency to 50Hz. Formula: (Clock / Divider) / Wrap -> (125MHz / 125) / 20000 = 50Hz.
+	pwm_set_clkdiv(this->slice_num, 125.0);
 
 	// Set the wrap to 20000.
-	pwm_set_wrap(slice_num, 20000);
-
-	//	Enable pwm.
-	pwm_set_enabled(slice_num, true);
+	pwm_set_wrap(this->slice_num, 20000);
 }
 
 
@@ -38,7 +33,9 @@ void BLDC::set_power(float power){
 	
 	//	Convert the data between max and min duty.
 	int duty = (((float)(max_duty - min_duty) / 100.0) * power) + min_duty;
-	pwm_set_gpio_level(p_gp, duty);
+	pwm_set_chan_level(this->slice_num, PWM_CHAN_A, duty);
+	//	Enable pwm.
+	pwm_set_enabled(this->slice_num, true);
 }
 
 

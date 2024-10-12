@@ -9,7 +9,7 @@ int main(){
 	stdio_init_all();
 
 	//	Set the pin number and duty interval.
-	BLDC bldc(BLDC_PIN, 890, 1600);
+	BLDC bldc(BLDC_PIN, 1000, 2000);
     bldc.set_power(0.0);
     sleep_ms(5000);
 
@@ -36,6 +36,6 @@ int main(){
             bldc.set_power(i);
             sleep_ms(200);
         }
-		sleep_ms(3000);
+		sleep_ms(5000);
 	}
 }
